@@ -18,6 +18,19 @@ except ImportError:
     except ImportError:
         db_library = None
 
+# Fix for Python 3.13.0 tkinter/TclError on Windows where Tcl libraries cannot be found
+if sys.platform.startswith('win'):
+    base_dir = getattr(sys, 'base_prefix', sys.prefix)
+    tcl_dir = os.path.join(base_dir, 'tcl')
+    if os.path.isdir(tcl_dir):
+        for item in os.listdir(tcl_dir):
+            item_path = os.path.join(tcl_dir, item)
+            if os.path.isdir(item_path):
+                if item.startswith('tcl8.'):
+                    os.environ.setdefault('TCL_LIBRARY', item_path)
+                elif item.startswith('tk8.'):
+                    os.environ.setdefault('TK_LIBRARY', item_path)
+
 # Tkinter Imports
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -174,7 +187,6 @@ class PincodeImporterApp:
         # Fields
         ttk.Label(db_card, text="Host / IP:", style="Card.TLabel").grid(row=1, column=0, sticky="w", pady=6)
         self.db_host = ttk.Entry(db_card)
-        self.db_host.insert(0, "14.192.17.185")
         self.db_host.grid(row=1, column=1, sticky="ew", padx=(10, 0), pady=6)
         
         ttk.Label(db_card, text="Port:", style="Card.TLabel").grid(row=2, column=0, sticky="w", pady=6)
@@ -184,17 +196,14 @@ class PincodeImporterApp:
         
         ttk.Label(db_card, text="Username:", style="Card.TLabel").grid(row=3, column=0, sticky="w", pady=6)
         self.db_user = ttk.Entry(db_card)
-        self.db_user.insert(0, "root")
         self.db_user.grid(row=3, column=1, sticky="ew", padx=(10, 0), pady=6)
         
         ttk.Label(db_card, text="Password:", style="Card.TLabel").grid(row=4, column=0, sticky="w", pady=6)
         self.db_pass = ttk.Entry(db_card, show="*")
-        self.db_pass.insert(0, "brdb123")
         self.db_pass.grid(row=4, column=1, sticky="ew", padx=(10, 0), pady=6)
         
         ttk.Label(db_card, text="Database:", style="Card.TLabel").grid(row=5, column=0, sticky="w", pady=6)
         self.db_name = ttk.Entry(db_card)
-        self.db_name.insert(0, "caerp_db_master")
         self.db_name.grid(row=5, column=1, sticky="ew", padx=(10, 0), pady=6)
         
         # Test connection button
@@ -399,7 +408,8 @@ class PincodeImporterApp:
 
     def get_db_connection(self):
         host = self.db_host.get().strip()
-        port = int(self.db_port.get().strip())
+        port_str = self.db_port.get().strip()
+        port = int(port_str) if port_str.isdigit() else 3306
         user = self.db_user.get().strip()
         password = self.db_pass.get()
         database = self.db_name.get().strip()
